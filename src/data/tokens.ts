@@ -153,6 +153,7 @@ export const tokensBySlug: Record<TokenSlug, TokenDefinition> = {
       { label: "Wall Of Fame", href: "https://xvgbase.walloffame.finance", kind: "market" },
       { label: "Tangem", href: "https://tangem.com/en/how-to-buy/xvgbase/", kind: "market" },
       { label: "Jump to Farm", href: "#farm", kind: "farm" },
+      { label: "View on GeckoTerminal", href: "https://www.geckoterminal.com/base/pools/0x7f09fde136dafc1222ef22d4d15f434a0161aa50", kind: "dex" },
       { label: "View on DexTools", href: "https://www.dextools.io/app/en/base/pair-explorer/0x7f09fde136dafc1222ef22d4d15f434a0161aa50", kind: "dex" },
     ],
     wallet: {
@@ -234,6 +235,7 @@ export const tokensBySlug: Record<TokenSlug, TokenDefinition> = {
       { label: "View Explorer", href: "https://arbiscan.io/token/0xe061aa40be525a13296cb4bf69f513242349d708", kind: "explorer" },
       { label: "CoinGecko", href: "https://www.coingecko.com/en/coins/xvgarb", kind: "market" },
       { label: "CoinStats", href: "https://coinstats.app/coins/xvgarb/", kind: "market" },
+      { label: "View on GeckoTerminal", href: "https://www.geckoterminal.com/arbitrum/pools/0xeda17fad99924e44030ed6900cf20beb888ce2fc7f50e0ad4ffd584eb84ca5e5", kind: "dex" },
       { label: "View on DexTools", href: "https://www.dextools.io/app/en/arbitrum/pair-explorer/0xeda17fad99924e44030ed6900cf20beb888ce2fc7f50e0ad4ffd584eb84ca5e5", kind: "dex" },
     ],
     wallet: {
@@ -261,6 +263,7 @@ export const tokensBySlug: Record<TokenSlug, TokenDefinition> = {
       { label: "View Explorer", href: "https://snowtrace.io/token/0xe061aa40be525a13296cb4bf69f513242349d708", kind: "explorer" },
       { label: "CoinGecko", href: "https://www.coingecko.com/en/coins/xvgava", kind: "market" },
       { label: "CoinStats", href: "https://coinstats.app/coins/xvgava/", kind: "market" },
+      { label: "View on GeckoTerminal", href: "https://www.geckoterminal.com/avax/pools/0x09ae78182a2183a8ffbbca73bde007bb907cdd7022b06b3bda6379d8effff3f1", kind: "dex" },
       { label: "View on DexTools", href: "https://www.dextools.io/app/en/avalanche/pair-explorer/0x09ae78182a2183a8ffbbca73bde007bb907cdd7022b06b3bda6379d8effff3f1", kind: "dex" },
     ],
     wallet: {

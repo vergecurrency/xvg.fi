@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, Copy, ExternalLink, Sparkles, TrendingUp, Wallet } from "lucide-react";
+import { Activity, Check, ChevronLeft, Copy, ExternalLink, Sparkles, TrendingUp, Wallet } from "lucide-react";
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import { createPublicClient, formatUnits, http, parseAbi } from "viem";
 import { useAccount, useSwitchChain } from "wagmi";
@@ -24,6 +24,24 @@ type MarketChartState = {
   error: string | null;
 };
 
+type MarketStatsState = {
+  stats: MarketStats | null;
+  loading: boolean;
+  error: string | null;
+};
+
+type MarketStats = {
+  priceUsd: number | null;
+  liquidityUsd: number | null;
+  volume24hUsd: number | null;
+  priceChange24hPercent: number | null;
+  fdvUsd: number | null;
+  marketCapUsd: number | null;
+  pairLabel: string | null;
+  poolName: string | null;
+  transactions24h: number | null;
+};
+
 type GeckoTerminalPool = {
   network: string;
   poolAddress: string;
@@ -43,6 +61,7 @@ const chartWidth = 720;
 const chartHeight = 260;
 const chartPadding = 18;
 const marketChartCacheTtlMs = 10 * 60 * 1000;
+const marketStatsCacheTtlMs = 5 * 60 * 1000;
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -51,6 +70,36 @@ function formatCurrency(value: number) {
     minimumFractionDigits: value >= 1 ? 2 : 6,
     maximumFractionDigits: value >= 1 ? 2 : 8,
   }).format(value);
+}
+
+function formatCompactCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: Math.abs(value) >= 100_000 ? "compact" : "standard",
+    minimumFractionDigits: value >= 1 ? 2 : 6,
+    maximumFractionDigits: value >= 1 ? 2 : 8,
+  }).format(value);
+}
+
+function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    notation: value >= 100_000 ? "compact" : "standard",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function parseFiniteNumber(value: unknown) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function formatAxisPrice(value: number) {
@@ -157,6 +206,56 @@ function buildChartPath(points: MarketChartPoint[]) {
 
 function getMarketChartCacheKey(token: TokenDefinition) {
   return `token-market-chart:${token.slug}`;
+}
+
+function getMarketStatsCacheKey(token: TokenDefinition) {
+  return `token-market-stats:${token.slug}`;
+}
+
+function readCachedMarketStats(token: TokenDefinition) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(getMarketStatsCacheKey(token));
+
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as { cachedAt?: number; stats?: MarketStats };
+
+    if (
+      !Number.isFinite(parsed.cachedAt) ||
+      Date.now() - Number(parsed.cachedAt) > marketStatsCacheTtlMs ||
+      !parsed.stats
+    ) {
+      return null;
+    }
+
+    return parsed.stats;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedMarketStats(token: TokenDefinition, stats: MarketStats) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(
+      getMarketStatsCacheKey(token),
+      JSON.stringify({
+        cachedAt: Date.now(),
+        stats,
+      }),
+    );
+  } catch {
+    // Ignore storage failures. The stats can still render from the live response.
+  }
 }
 
 function readCachedMarketChart(token: TokenDefinition, source: CachedMarketChart["source"]) {
@@ -289,6 +388,11 @@ export function TokenPage({ token, tokens, onNavigate, children }: TokenPageProp
   const [marketChart, setMarketChart] = useState<MarketChartState>({
     points: [],
     loading: hasMarketChart,
+    error: null,
+  });
+  const [marketStats, setMarketStats] = useState<MarketStatsState>({
+    stats: null,
+    loading: Boolean(geckoTerminalPoolAddress),
     error: null,
   });
 
@@ -529,6 +633,110 @@ export function TokenPage({ token, tokens, onNavigate, children }: TokenPageProp
     return () => controller.abort();
   }, [geckoTerminalNetwork, geckoTerminalPoolAddress, token.contractAddress, token.marketChartId, token.slug, token.symbol]);
 
+  useEffect(() => {
+    if (!geckoTerminalNetwork || !geckoTerminalPoolAddress) {
+      setMarketStats({ stats: null, loading: false, error: null });
+      return;
+    }
+
+    const cachedStats = readCachedMarketStats(token);
+
+    if (cachedStats) {
+      setMarketStats({ stats: cachedStats, loading: false, error: null });
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadMarketStats() {
+      setMarketStats((current) => ({ ...current, loading: true, error: null }));
+
+      try {
+        const response = await fetch(
+          `https://api.geckoterminal.com/api/v2/networks/${geckoTerminalNetwork}/pools/${geckoTerminalPoolAddress}?include=base_token,quote_token`,
+          { signal: controller.signal },
+        );
+
+        if (!response.ok) {
+          throw new Error(`GeckoTerminal stats request failed with ${response.status}`);
+        }
+
+        const payload = (await response.json()) as {
+          data?: {
+            attributes?: {
+              name?: string;
+              base_token_price_usd?: string;
+              quote_token_price_usd?: string;
+              reserve_in_usd?: string;
+              fdv_usd?: string;
+              market_cap_usd?: string;
+              volume_usd?: { h24?: string };
+              price_change_percentage?: { h24?: string };
+              transactions?: { h24?: { buys?: number; sells?: number } };
+            };
+            relationships?: {
+              base_token?: { data?: { id?: string } };
+              quote_token?: { data?: { id?: string } };
+            };
+          };
+          included?: Array<{
+            id?: string;
+            attributes?: {
+              symbol?: string;
+            };
+          }>;
+        };
+
+        const attributes = payload.data?.attributes;
+        const tokenAddress = token.contractAddress.toLowerCase();
+        const baseTokenId = payload.data?.relationships?.base_token?.data?.id?.toLowerCase() ?? "";
+        const quoteTokenId = payload.data?.relationships?.quote_token?.data?.id?.toLowerCase() ?? "";
+        const baseToken = payload.included?.find((item) => item.id?.toLowerCase() === baseTokenId);
+        const quoteToken = payload.included?.find((item) => item.id?.toLowerCase() === quoteTokenId);
+        const baseSymbol = baseToken?.attributes?.symbol?.toUpperCase();
+        const quoteSymbol = quoteToken?.attributes?.symbol?.toUpperCase();
+        const transactions24h =
+          typeof attributes?.transactions?.h24?.buys === "number" &&
+          typeof attributes.transactions.h24.sells === "number"
+            ? attributes.transactions.h24.buys + attributes.transactions.h24.sells
+            : null;
+        const stats: MarketStats = {
+          priceUsd: baseTokenId.includes(tokenAddress)
+            ? parseFiniteNumber(attributes?.base_token_price_usd)
+            : quoteTokenId.includes(tokenAddress)
+              ? parseFiniteNumber(attributes?.quote_token_price_usd)
+              : null,
+          liquidityUsd: parseFiniteNumber(attributes?.reserve_in_usd),
+          volume24hUsd: parseFiniteNumber(attributes?.volume_usd?.h24),
+          priceChange24hPercent: parseFiniteNumber(attributes?.price_change_percentage?.h24),
+          fdvUsd: parseFiniteNumber(attributes?.fdv_usd),
+          marketCapUsd: parseFiniteNumber(attributes?.market_cap_usd),
+          pairLabel: baseSymbol && quoteSymbol ? `${baseSymbol} / ${quoteSymbol}` : null,
+          poolName: attributes?.name ?? null,
+          transactions24h,
+        };
+
+        writeCachedMarketStats(token, stats);
+        setMarketStats({ stats, loading: false, error: null });
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        console.error(`Failed loading ${token.symbol} market stats`, error);
+        setMarketStats({
+          stats: null,
+          loading: false,
+          error: "Market stats are temporarily unavailable.",
+        });
+      }
+    }
+
+    void loadMarketStats();
+
+    return () => controller.abort();
+  }, [geckoTerminalNetwork, geckoTerminalPoolAddress, token]);
+
   const chartPoints = marketChart.points;
   const firstPoint = chartPoints[0];
   const lastPoint = chartPoints[chartPoints.length - 1];
@@ -545,6 +753,9 @@ export function TokenPage({ token, tokens, onNavigate, children }: TokenPageProp
   const chartAreaGradientId = `${token.slug}-price-area`;
   const chartLineGradientId = `${token.slug}-price-line`;
   const chartGlowGradientId = `${token.slug}-price-glow`;
+  const stats = marketStats.stats;
+  const statsChange = stats?.priceChange24hPercent ?? null;
+  const isPositiveStatsChange = statsChange === null || statsChange >= 0;
 
   async function handleSwitchChain() {
     if (!switchChainAsync) {
@@ -718,6 +929,82 @@ export function TokenPage({ token, tokens, onNavigate, children }: TokenPageProp
             eyebrow={token.chainName}
             heading={`Swap ${token.symbol}`}
           />
+        </section>
+      ) : null}
+
+      {geckoTerminalPoolAddress ? (
+        <section
+          className="token-page__resources token-page__market-stats"
+          style={
+            {
+              "--token-landing-glow": token.landingGlow,
+              "--token-landing-glow-secondary": token.landingGlowSecondary ?? token.landingGlow,
+            } as CSSProperties
+          }
+        >
+          <div className="token-page__section-head">
+            <div>
+              <div className="token-page__section-eyebrow">
+                <Activity className="h-4 w-4" />
+                Live Pool
+              </div>
+              <h2>Market Stats</h2>
+            </div>
+            {stats?.pairLabel ? (
+              <a
+                href={`https://www.geckoterminal.com/${geckoTerminalNetwork}/pools/${geckoTerminalPoolAddress}`}
+                target="_blank"
+                rel="noreferrer"
+                className="token-page__stats-source"
+              >
+                {stats.pairLabel}
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            ) : null}
+          </div>
+
+          {marketStats.loading ? (
+            <div className="token-page__chart-state">Loading live pool stats...</div>
+          ) : marketStats.error ? (
+            <div className="token-page__chart-state token-page__chart-state--error">{marketStats.error}</div>
+          ) : stats ? (
+            <div className="token-page__stats-shell">
+              <div className="token-page__stats-hero">
+                <span className="token-page__stats-label">Token Price</span>
+                <strong>{stats.priceUsd !== null ? formatCompactCurrency(stats.priceUsd) : "-"}</strong>
+                {statsChange !== null ? (
+                  <span className={isPositiveStatsChange ? "is-positive" : "is-negative"}>
+                    {isPositiveStatsChange ? "+" : ""}
+                    {statsChange.toFixed(2)}% 24h
+                  </span>
+                ) : null}
+              </div>
+              <div className="token-page__stats-grid">
+                <div className="token-page__stat">
+                  <span>Liquidity</span>
+                  <strong>{stats.liquidityUsd !== null ? formatCompactCurrency(stats.liquidityUsd) : "-"}</strong>
+                </div>
+                <div className="token-page__stat">
+                  <span>Volume 24h</span>
+                  <strong>{stats.volume24hUsd !== null ? formatCompactCurrency(stats.volume24hUsd) : "-"}</strong>
+                </div>
+                <div className="token-page__stat">
+                  <span>{stats.marketCapUsd !== null ? "Market Cap" : "FDV"}</span>
+                  <strong>
+                    {stats.marketCapUsd !== null
+                      ? formatCompactCurrency(stats.marketCapUsd)
+                      : stats.fdvUsd !== null
+                        ? formatCompactCurrency(stats.fdvUsd)
+                        : "-"}
+                  </strong>
+                </div>
+                <div className="token-page__stat">
+                  <span>Swaps 24h</span>
+                  <strong>{stats.transactions24h !== null ? formatCompactNumber(stats.transactions24h) : "-"}</strong>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </section>
       ) : null}
 

@@ -2992,6 +2992,175 @@ body[data-view="swap"] .swap-progress__track {
   padding-bottom: 0.4rem;
 }
 
+.token-page__market-stats {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.token-page__market-stats::before {
+  content: "";
+  position: absolute;
+  inset: -35% -18% auto auto;
+  width: 22rem;
+  height: 22rem;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--token-landing-glow, #38bdf8) 28%, transparent), transparent 68%);
+  filter: blur(8px);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.token-page__market-stats::after {
+  content: "";
+  position: absolute;
+  inset: auto auto -38% -14%;
+  width: 18rem;
+  height: 18rem;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--token-landing-glow-secondary, #f472b6) 22%, transparent), transparent 70%);
+  filter: blur(10px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.token-page__stats-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.72rem 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--token-landing-glow, #38bdf8) 32%, rgba(255, 255, 255, 0.12));
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
+    color-mix(in srgb, var(--token-landing-glow, #38bdf8) 12%, rgba(2, 6, 23, 0.56));
+  color: rgba(248, 250, 252, 0.94);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: 180ms ease;
+}
+
+.token-page__stats-source:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--token-landing-glow, #38bdf8) 48%, rgba(255, 255, 255, 0.16));
+  color: #fff;
+}
+
+.token-page__stats-shell {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  gap: 1rem;
+}
+
+.token-page__stats-hero,
+.token-page__stat {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02)),
+    rgba(255, 255, 255, 0.035);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 18px 42px rgba(2, 6, 23, 0.18);
+}
+
+.token-page__stats-hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  align-content: end;
+  min-height: 13rem;
+  padding: 1.25rem;
+  border-radius: 1.45rem;
+}
+
+.token-page__stats-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--token-landing-glow, #38bdf8) 22%, transparent), transparent 54%),
+    radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.16), transparent 26%);
+  opacity: 0.88;
+  pointer-events: none;
+}
+
+.token-page__stats-label,
+.token-page__stat span {
+  display: block;
+  color: rgba(148, 163, 184, 0.84);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.token-page__stats-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.token-page__stats-hero strong {
+  margin-top: 0.45rem;
+  color: #fff;
+  font-family: "Orbitron", "IBM Plex Sans", sans-serif;
+  font-size: clamp(2rem, 4.4vw, 3.65rem);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  text-shadow:
+    0 0 20px color-mix(in srgb, var(--token-landing-glow, #38bdf8) 28%, transparent),
+    0 0 46px rgba(255, 255, 255, 0.08);
+}
+
+.token-page__stats-hero span:last-child {
+  justify-self: start;
+  margin-top: 0.8rem;
+  padding: 0.5rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.token-page__stats-hero .is-positive,
+.token-page__stat .is-positive {
+  color: #4ade80;
+}
+
+.token-page__stats-hero .is-negative,
+.token-page__stat .is-negative {
+  color: #fb7185;
+}
+
+.token-page__stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.token-page__stat {
+  display: grid;
+  align-content: space-between;
+  min-height: 6rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1.2rem;
+}
+
+.token-page__stat strong {
+  margin-top: 0.7rem;
+  color: #fff;
+  font-size: clamp(1.12rem, 2vw, 1.45rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.18;
+}
+
 .token-page__chart-section {
   display: grid;
   gap: 1.4rem;
@@ -3385,9 +3554,23 @@ body[data-view="swap"] .swap-progress__track {
     justify-items: start;
   }
 
+  .token-page__stats-source {
+    max-width: 100%;
+    justify-content: space-between;
+  }
+
+  .token-page__stats-shell,
   .token-page__chart-metrics,
   .token-page__chart-shell {
     grid-template-columns: 1fr;
+  }
+
+  .token-page__stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .token-page__stats-hero {
+    min-height: 11rem;
   }
 
   .token-page__chart-axis {
