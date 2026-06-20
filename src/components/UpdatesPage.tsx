@@ -11,6 +11,10 @@ function TokenMention({ children }: { children: ReactNode }) {
 
 const updates: UpdateEntry[] = [
   {
+    date: "June 20th 2026",
+    description: "In-depth market info section added to each token.",
+  },
+  {
     date: "May 15th 2026",
     description: "Added network website to each tokens page.",
   },

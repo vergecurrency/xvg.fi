@@ -946,7 +946,7 @@ export function TokenPage({ token, tokens, onNavigate, children }: TokenPageProp
             <div>
               <div className="token-page__section-eyebrow">
                 <Activity className="h-4 w-4" />
-                Live Pool
+                Token Data
               </div>
               <h2>Market Stats</h2>
             </div>
